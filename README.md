@@ -202,7 +202,22 @@ Netwatcher detects the following attack types:
 
 ## Documentation
 
-- [SPEC.md](SPEC.md) - Detailed specification document
+For detailed documentation, see the [docs/](docs/) folder:
+
+| Guide | Description |
+|-------|-------------|
+| [docs/what-is-netwatcher.md](docs/what-is-netwatcher.md) | What is Netwatcher and why use it |
+| [docs/how-it-works.md](docs/how-it-works.md) | Internal architecture and data flow |
+| [docs/setup-guide.md](docs/setup-guide.md) | Complete installation guide |
+| [docs/architecture.md](docs/architecture.md) | System design and modules |
+| [docs/tech-stack.md](docs/tech-stack.md) | Technologies and dependencies |
+| [docs/configuration.md](docs/configuration.md) | All configuration options |
+| [docs/modifying-detection.md](docs/modifying-detection.md) | Change detection thresholds |
+| [docs/adding-new-attacks.md](docs/adding-new-attacks.md) | Add new attack types |
+| [docs/faq.md](docs/faq.md) | Frequently asked questions |
+
+Also see:
+- [SPEC.md](SPEC.md) - Technical specification
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
 - [LICENSE](LICENSE) - MIT License
 

@@ -1,268 +1,242 @@
-# Netwatcher - Network Traffic Analyzer with ML & AI
+# Netwatcher - Technical Specification
 
-## Project Overview
+## 1. Project Overview
 
-**Project Name:** Netwatcher  
-**Type:** Network security monitoring tool with ML-powered anomaly detection  
-**Core Functionality:** Captures network traffic, classifies it using ML, generates AI explanations, and alerts users on suspicious activity  
-**Target Users:** Network administrators, security analysts, IT professionals, and organizations needing automated traffic monitoring
+**Project Name:** Netwatcher
+**Type:** Network Intrusion Detection System (IDS)
+**Core Functionality:** Real-time network traffic capture, ML-powered threat classification, AI explanations, and multi-channel alerting
+**Target Users:** Network administrators, security analysts, IT professionals
 
 ---
 
-## Project Structure
+## 2. Project Structure
 
 ```
 Netwatcher/
-├── SPEC.md
-├── README.md
-├── requirements.txt
 ├── src/
-│   ├── __init__.py
-│   ├── capture/
-│   │   ├── __init__.py
-│   │   ├── packet_capture.py      # Live capture using pyshark/tshark
-│   │   └── traffic_processor.py   # Process captured packets
-│   ├── ml/
-│   │   ├── __init__.py
-│   │   ├── model_trainer.py        # Train ML model on CICIDS dataset
-│   │   ├── classifier.py           # Classify traffic
-│   │   └── features.py             # Feature extraction from packets
 │   ├── ai/
 │   │   ├── __init__.py
 │   │   └── explanation_engine.py    # AI explanation generation
 │   ├── alerts/
 │   │   ├── __init__.py
-│   │   ├── alert_manager.py        # Alert orchestration
-│   │   ├── email_alert.py
-│   │   ├── sms_alert.py
-│   │   └── slack_alert.py
+│   │   ├── alert_manager.py        # Alert orchestration & rate limiting
+│   │   ├── email_alert.py          # SMTP email alerts
+│   │   ├── sms_alert.py            # Twilio SMS alerts
+│   │   ├── slack_alert.py          # Slack webhook alerts
+│   │   └── models.py               # Alert data models
+│   ├── capture/
+│   │   ├── __init__.py
+│   │   ├── packet_capture.py       # Live capture using pyshark/tshark
+│   │   └── traffic_processor.py    # Packet processing & attack detection
 │   ├── dashboard/
 │   │   ├── __init__.py
-│   │   ├── app.py                  # Flask application
+│   │   ├── app.py                  # Flask application with SocketIO
 │   │   └── templates/
-│   │       └── index.html          # Dashboard UI
+│   │       └── index.html          # Dashboard UI (single-page app)
+│   ├── ml/
+│   │   ├── __init__.py
+│   │   ├── classifier.py           # Rule-based + ML traffic classification
+│   │   ├── features.py             # Feature extraction
+│   │   └── model_trainer.py        # Model training utilities
 │   └── utils/
 │       ├── __init__.py
-│       ├── config.py               # Configuration management
-│       └── logger.py               # Logging utility
-├── models/                         # Trained model storage
-│   └── traffic_classifier.pkl
+│       ├── config.py               # YAML configuration management
+│       └── logger.py               # Logging utilities
+├── scripts/
+│   ├── train_model.py              # Train ML classifier
+│   ├── train_real_model.py         # Train on CICIDS2017 dataset
+│   ├── download_and_train.py       # Download and train pipeline
+│   ├── generate_pcaps_fast.py      # Generate test PCAP files
+│   ├── export_report.py            # Export reports as CSV/PDF
 ├── data/
-│   ├── captured/                   # Captured traffic data
-│   └── cicids2017_sample.csv       # Sample training data
-├── train_model.py                  # Model training script
-├── export_report.py                # Export functionality
-└── run.py                          # Main entry point
+│   ├── test_pcaps/                  # Test PCAP files (6 attack types)
+│   ├── cicids2017/                  # CICIDS2017 dataset (optional)
+│   └── captured/                    # User-captured traffic
+├── models/                          # Trained model storage
+├── tests/                           # Unit tests (if any)
+├── README.md                        # Project overview
+├── SPEC.md                          # This specification
+├── CONTRIBUTING.md                   # Contribution guidelines
+├── LICENSE                          # MIT License
+├── requirements.txt                 # Python dependencies
+├── config.example.yaml             # Configuration template
+└── run.py                           # Application entry point
 ```
 
 ---
 
-## Functionality Specification
+## 3. Functionality Specification
 
-### 1. Capture Module
+### 3.1 Capture Module (`src/capture/`)
 
 **Features:**
-- Live packet capture using `pyshark` (Python wrapper for tshark)
-- Interface selection (auto-detect or specify interface)
-- Capture filtering using BPF syntax (e.g., `tcp port 80`, `udp`, `host 192.168.1.1`)
-- Configurable capture duration or continuous mode
-- PCAP file saving for later analysis
-- Real-time packet event streaming
+- Live packet capture using pyshark/tshark
+- Auto-detect or specify network interface
+- BPF filter support (e.g., `tcp port 80`, `udp`, `host 192.168.1.1`)
+- PCAP file saving for offline analysis
+- Real-time packet event streaming via SocketIO
 
-**Data Captured Per Packet:**
-- Timestamp
-- Source/Destination IP
-- Source/Destination Port
-- Protocol (TCP/UDP/ICMP)
-- Packet length
-- TCP flags (if applicable)
-- Payload size
-- Inter-arrival time
+**Packet Data Captured:**
+- Timestamp, Source/Destination IP, Source/Destination Port
+- Protocol (TCP/UDP/ICMP/OTHER)
+- Packet length, TCP flags, Payload
+- Inter-arrival time (calculated)
 
 **Edge Cases:**
-- No network interfaces available → graceful error with list of available interfaces
-- Permission denied (non-root on Linux) → clear error message with sudo instructions
-- Wireshark/tshark not installed → installation instructions
-- Capture buffer overflow → warning and automatic buffer management
+- No interfaces available → list available with error
+- tshark not installed → installation instructions
+- Permission denied → clear error with sudo hint
 
-### 2. ML Module
+### 3.2 Traffic Processor (`src/capture/traffic_processor.py`)
 
-**Training Pipeline:**
-- Dataset: CICIDS2017 (Canadian Institute for Cybersecurity Intrusion Detection)
-- Features: 78 network traffic features (flow duration, packet counts, byte counts, etc.)
-- Model: XGBoost classifier (gradient boosting)
-- Classes: Normal, Brute Force (FTP-SSH), DoS, Port Scan, Infiltration, Web Attack, Botnet
+**Attack Detection (Rule-Based):**
 
-**Feature Extraction:**
-- Flow-based features (aggregated statistics)
-- Connection patterns (packets per second, bytes per second)
-- Protocol distribution
-- Port usage patterns
-- Session duration metrics
+| Attack | Detection Logic | Threshold |
+|--------|-----------------|------------|
+| **DoS** | High-volume UDP from single source | 20+ packets >1000 bytes in 10s |
+| **Port Scan** | Single source hitting many ports rapidly | 15+ distinct ports in 30s |
+| **Brute Force** | Rapid SSH connection attempts | 10+ attempts in 60s |
+| **SQL Injection** | Suspicious patterns in HTTP payloads | Dangerous keyword OR 2+ indicators |
+| **XSS** | Script injection patterns | Dangerous vector detected |
+| **Bot** | Regular interval traffic to suspicious ports | 3+ regular beacon intervals |
 
-**Model Output:**
-- Classification label (Normal/Attack Type)
-- Confidence score (0-1)
-- Feature importance for explanation
+**Statistics Tracked:**
+- Packet/byte counts, protocol distribution
+- Top source/destination IPs and ports
+- Packets per second, bytes per second
+- Attack pattern counters
 
-**Edge Cases:**
-- Insufficient training data → use pre-trained model
-- Unknown attack type → classify as "Suspicious - Unknown Type"
-- Model file missing → auto-train on first run
+### 3.3 ML Classifier (`src/ml/classifier.py`)
 
-### 3. AI Explanation Engine
+**Classification Labels:**
+- `BENIGN`, `Bot`, `Brute Force`, `DoS`, `Port Scan`, `SQL Injection`, `XSS`
+
+**Categories & Severity:**
+| Category | Attack Types | Severity |
+|----------|--------------|----------|
+| Normal | BENIGN | 0 |
+| Botnet | Bot | 4 |
+| Brute Force | Brute Force | 3 |
+| DoS | DoS | 3 |
+| Reconnaissance | Port Scan | 2 |
+| Web Attack | SQL Injection, XSS | 3 |
+
+**Classification Logic:**
+1. Always run rule-based detection first
+2. If attack patterns detected → use rule-based result
+3. If no patterns → check ML model as secondary
+4. ML attack predictions require feature evidence (no false positives)
+
+**Output:**
+- `label`: Classification category
+- `confidence`: 0.0-1.0 confidence score
+- `severity`: 0-4 severity level
+- `is_threat`: Boolean threat flag
+- `all_detected_attacks`: List of detected attack types
+
+### 3.4 AI Explanation Engine (`src/ai/explanation_engine.py`)
 
 **Capabilities:**
-- Plain-English summary of traffic patterns
-- Specific threat explanation when attack detected
-- Recommended actions for mitigation
-- Context-aware explanations based on classification
+- Plain-English traffic summaries
+- Context-aware threat explanations
+- MITRE ATT&CK tactic mapping
+- IOC (Indicators of Compromise) extraction
+- Actionable mitigation recommendations
 
 **Output Format:**
 ```
 [Traffic Summary]
-Total packets: 1,234 | Duration: 60s | Protocols: TCP(89%), UDP(11%)
-Normal traffic ratio: 95.2%
+Total packets: X | Duration: Xs | Rate: X pps
+Protocol distribution: TCP (X%), UDP (X%), ICMP (X%)
 
-[Threat Analysis - DETECTED]
-Attack Type: Port Scan
-Confidence: 94.3%
+[Threat Analysis]
+Status: [DETECTED/NORMAL]
+Attack Type: [type]
+Confidence: [X%]
+Severity: [level]
 
 [AI Explanation]
-The traffic pattern shows rapid connection attempts to multiple sequential 
-ports (22, 23, 80, 443, 3306, 5432) from IP 192.168.1.105. This is 
-characteristic of reconnaissance activity, likely attempting to identify 
-running services before a potential attack.
+[Dynamic contextual analysis based on attack type]
+
+[MITRE ATT&CK Mapping]
+[Tactic] - [Technique]
+
+[Indicators of Compromise]
+- IP: [suspicious IPs]
+- Ports: [suspicious ports]
 
 [Recommended Actions]
-1. Block source IP 192.168.1.105 at firewall
-2. Review authentication logs on targeted hosts
-3. Enable enhanced logging for port 22, 3306, 5432
+1. [action]
+2. [action]
 ```
 
 **Configuration:**
-- OpenAI API key for GPT models (configurable)
-- Fallback to local template-based explanations if no API key
-- Adjustable explanation verbosity (brief/detailed)
+- OpenAI API key (optional, falls back to templates)
+- Explanation verbosity (brief/detailed)
 
-### 4. Alerting Module
+### 3.5 Alerting Module (`src/alerts/`)
 
-**Alert Channels:**
+**Channels:**
+1. **Email (SMTP)** - Formatted HTML alerts
+2. **SMS (Twilio)** - Concise 160-char alerts
+3. **Slack** - Rich formatting with severity colors
 
-**Email (SMTP):**
-- Configurable SMTP server (host, port, TLS)
-- Authentication (username, password)
-- Recipients list
-- Subject templates with attack type
-- Rate limiting (prevent alert floods)
+**Alert Manager:**
+- Rate limiting: max 3 alerts per 5 minutes
+- Severity threshold filtering
+- Alert queue with retry on failure
+- Alert history tracking
 
-**SMS (Twilio):**
-- Twilio credentials (account_sid, auth_token)
-- From/To phone numbers
-- Concise alert message (160 chars)
+**Alert Trigger Conditions:**
+- Attack detected with confidence >= threshold
+- Anomalous traffic patterns
+- Rate limit bypass for critical threats
 
-**Slack Webhook:**
-- Webhook URL
-- Channel override
-- Rich formatting with attack details
-- Alert severity color coding
+### 3.6 Dashboard (`src/dashboard/`)
 
-**Alert Triggers:**
-- Attack detected with confidence > 80%
-- Anomalous traffic spike (> 3x normal)
-- Port scan detection
-- Multiple failed connection attempts
+**Technology:** Flask + SocketIO + Bootstrap 5 + Chart.js
 
-**Edge Cases:**
-- Network failure → queue alerts for retry
-- Rate limiting hit → exponential backoff
-- Invalid credentials → clear error with validation
+**Tabs:**
+1. **Dashboard** - Overview with stats, charts, recent activity
+2. **Packet Monitor** - Live packet table with classification
+3. **Analytics** - Protocol distribution, top IPs, threat trends
+4. **Alerts** - Alert history with filtering
+5. **Reports** - Export data as CSV/HTML
 
-### 5. Dashboard
+**Real-time Features:**
+- Live traffic stats (packets/sec, bytes/sec)
+- Protocol distribution pie chart
+- Top source/destination IPs bar chart
+- Threat level indicator
+- Recent alerts feed
+- AI analysis panel
 
-**Visualizations:**
-- Real-time traffic rate (packets/second)
-- Protocol distribution (pie chart)
-- Classification results (bar chart)
-- Recent alerts timeline
-- Top source/destination IPs
-- Threat level gauge
-
-**Sections:**
-1. **Header:** App title, status indicator, settings gear
-2. **Stats Cards:** Live metrics (packets captured, threats detected, uptime)
-3. **Traffic Chart:** Line chart showing traffic over time
-4. **Classification Panel:** ML results with confidence
-5. **AI Explanation:** Current traffic analysis in plain English
-6. **Alerts Feed:** Recent alerts with severity icons
-7. **Controls:** Start/Stop capture, interface selector, filter input
-
-**Refresh:** Auto-refresh every 5 seconds (configurable)
+**Refresh:** Auto-refresh every 5 seconds via SocketIO
 
 ---
 
-## Acceptance Criteria
-
-### Capture Module
-- [ ] Successfully captures packets from any available network interface
-- [ ] Applies BPF filters correctly
-- [ ] Saves PCAP files that can be opened in Wireshark
-- [ ] Streams packets in real-time to dashboard
-- [ ] Handles errors gracefully with user-friendly messages
-
-### ML Module
-- [ ] Trains model on CICIDS2017 dataset achieving >95% accuracy
-- [ ] Classifies traffic in real-time with <100ms latency
-- [ ] Outputs confidence scores alongside predictions
-- [ ] Handles unknown traffic types gracefully
-
-### AI Explanation
-- [ ] Generates human-readable traffic summaries
-- [ ] Explains detected threats in context
-- [ ] Provides actionable recommendations
-- [ ] Falls back to template explanations when API unavailable
-
-### Alerting
-- [ ] Sends email alerts with formatted content
-- [ ] Sends SMS via Twilio for critical alerts
-- [ ] Posts to Slack with rich formatting
-- [ ] Implements rate limiting to prevent spam
-
-### Dashboard
-- [ ] Displays live traffic statistics
-- [ ] Shows real-time charts updating every 5s
-- [ ] Displays AI explanations
-- [ ] Shows alert history
-- [ ] Allows start/stop of capture
-- [ ] Responsive design for different screen sizes
-
-### Export
-- [ ] Exports captured data as CSV
-- [ ] Generates PDF reports with charts and analysis
-
----
-
-## Configuration (config.yaml)
+## 4. Configuration Schema (`config.yaml`)
 
 ```yaml
 capture:
-  interface: "auto"          # or specific interface name
-  filter: ""                  # BPF filter
-  buffer_size: 10000         # packets
+  interface: "auto"              # or specific interface
+  filter: ""                      # BPF filter
+  buffer_size: 10000             # packet buffer
   output_dir: "./data/captured"
 
 ml:
   model_path: "./models/traffic_classifier.pkl"
-  confidence_threshold: 0.8   # trigger alerts above this
-  training_data: "./data/cicids2017_sample.csv"
+  confidence_threshold: 0.95     # alert threshold
 
 ai:
-  provider: "openai"          # or "local"
-  api_key: ""                 # Set via environment variable
+  provider: "openai"              # or "local"
+  api_key: "${OPENAI_API_KEY}"   # environment variable
   model: "gpt-3.5-turbo"
   explanation_level: "detailed"
 
 alerts:
+  rate_limit_seconds: 300        # 5 min rate limit
+  max_alerts_per_window: 3
   email:
     enabled: false
     smtp_host: "smtp.gmail.com"
@@ -283,7 +257,7 @@ alerts:
 dashboard:
   host: "0.0.0.0"
   port: 5000
-  refresh_interval: 5        # seconds
+  refresh_interval: 5
 
 export:
   csv_dir: "./data/exports"
@@ -292,31 +266,132 @@ export:
 
 ---
 
-## Tech Stack
+## 5. API Reference
 
-| Component | Technology |
-|-----------|------------|
-| Capture | pyshark, tshark |
-| ML | scikit-learn, XGBoost, pandas, numpy |
-| AI | OpenAI API / fallback templates |
-| Alerts | smtplib, twilio, requests |
-| Dashboard | Flask, Chart.js, Bootstrap 5 |
-| Export | pandas (CSV), reportlab (PDF) |
+### REST Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Dashboard home |
+| `/api/status` | GET | System status & stats |
+| `/api/capture/start` | POST | Start capture |
+| `/api/capture/stop` | POST | Stop capture |
+| `/api/capture/status` | GET | Capture status |
+| `/api/traffic/stats` | GET | Traffic statistics |
+| `/api/traffic/packets` | GET | Recent packets (last 100) |
+| `/api/alerts` | GET | Alert history |
+| `/api/interfaces` | GET | Available network interfaces |
+| `/api/model/info` | GET | ML model information |
+| `/api/explanation` | GET | AI explanation for current traffic |
+
+### WebSocket Events
+
+**Server → Client:**
+- `traffic_update` - Real-time traffic statistics
+- `packet` - New packet captured
+- `alert` - Alert triggered
+- `classification` - ML classification result
+
+**Client → Server:**
+- `start_capture` - Start packet capture
+- `stop_capture` - Stop packet capture
 
 ---
 
-## Dependencies
+## 6. Test PCAP Files
+
+Generated for testing in `data/test_pcaps/`:
+
+| File | Attack Type | Packets | Size |
+|------|-------------|---------|------|
+| `dos_attack.pcap` | DoS (UDP flood) | 50,000 | ~52 MB |
+| `port_scan.pcap` | Port Scan (TCP SYN) | 30,000 | ~2 MB |
+| `brute_force.pcap` | SSH Brute Force | 25,000 | ~2 MB |
+| `sql_injection.pcap` | SQL Injection | 30,000 | ~3 MB |
+| `xss_attack.pcap` | XSS Attack | 30,000 | ~4 MB |
+| `mixed_attack.pcap` | Mixed (all types) | 40,000 | ~7 MB |
+
+---
+
+## 7. Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Capture | pyshark, tshark (Wireshark) |
+| ML | scikit-learn (Random Forest) |
+| Dashboard | Flask, Flask-SocketIO |
+| Frontend | Bootstrap 5, Chart.js, Socket.IO |
+| Alerts | smtplib, twilio, requests |
+| Config | PyYAML, python-dotenv |
+
+---
+
+## 8. Dependencies
 
 ```
+flask>=2.0
+flask-socketio
 pyshark>=0.4
-xgboost>=1.7
 scikit-learn>=1.0
 pandas>=1.5
 numpy>=1.21
-flask>=2.0
 twilio>=7.0
 requests>=2.28
-reportlab>=4.0
 pyyaml>=6.0
 python-dotenv>=0.19
 ```
+
+---
+
+## 9. Acceptance Criteria
+
+### Capture Module
+- [x] Capture packets from available network interface
+- [x] Apply BPF filters correctly
+- [x] Stream packets in real-time to dashboard
+- [x] Handle errors gracefully
+
+### Detection
+- [x] Detect DoS attacks (UDP flood)
+- [x] Detect Port Scan attacks
+- [x] Detect Brute Force attempts (SSH)
+- [x] Detect SQL Injection in HTTP traffic
+- [x] Detect XSS attacks in HTTP traffic
+- [x] Low false positive rate
+
+### ML Classification
+- [x] Rule-based classification with thresholds
+- [x] Confidence scoring
+- [x] Severity levels
+- [x] Attack pattern confirmation
+
+### AI Explanations
+- [x] Dynamic threat analysis
+- [x] MITRE ATT&CK mapping
+- [x] IOC extraction
+- [x] Recommended actions
+
+### Dashboard
+- [x] Real-time traffic visualization
+- [x] Live packet table with classification
+- [x] Alert history and management
+- [x] Responsive design
+
+### Alerting
+- [x] Email alerts with rate limiting
+- [x] SMS alerts (Twilio)
+- [x] Slack webhook alerts
+
+---
+
+## 10. Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 2.1.0 | 2024-04-04 | Professional docs, cleanup, ML Model tab removed |
+| 2.0.0 | 2024-04-03 | AI explanations, attack detection tuning |
+| 1.0.0 | 2024-04-03 | Initial release with basic IDS |
+
+---
+
+*Last Updated: 2024-04-04*

@@ -6,7 +6,15 @@
       "Bash(where gh:*)",
       "Read(//c/Program Files/GitHub CLI/**)",
       "Bash(/c/Program Files/GitHub CLI/gh.exe auth:*)",
-      "Bash(/c/Program Files/GitHub CLI/gh.exe repo:*)"
+      "Bash(/c/Program Files/GitHub CLI/gh.exe repo:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" repo create Netwatcher --public --source=. --push)",
+      "Bash(ls -la *.py *.md *.yaml *.txt)",
+      "Bash(rm -f \"since]\")",
+      "Bash(ls -la *.py)",
+      "Bash(mkdir -p scripts)",
+      "Bash(mv download_and_train.py train_model.py train_real_model.py generate_pcaps_fast.py generate_test_pcaps.py scripts/)",
+      "Bash(mv export_report.py scripts/)",
+      "Bash(rm:*)"
     ]
   }
 }

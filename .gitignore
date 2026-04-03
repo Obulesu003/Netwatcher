@@ -36,8 +36,8 @@ ENV/
 *.log
 logs/
 
-# Data
-data/captured/*.pcap
+# Large test files (use Git LFS for these)
+# data/test_pcaps/*.pcap
 data/exports/*.csv
 data/reports/*.pdf
 

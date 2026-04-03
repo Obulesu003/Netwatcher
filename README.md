@@ -1,63 +1,97 @@
-# Netwatcher - Network Traffic Analyzer with ML & AI
+# Netwatcher - Network Intrusion Detection System
 
-A powerful network traffic analysis tool that captures packets, classifies traffic using machine learning, generates AI-powered explanations, and alerts administrators about suspicious activity.
+<div align="center">
+
+![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
+
+**Real-time network traffic analysis with ML-powered threat detection and AI explanations**
+
+[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Documentation](#documentation) • [Contributing](#contributing)
+
+</div>
+
+---
+
+## Overview
+
+Netwatcher is a powerful network intrusion detection system (IDS) that captures and analyzes network traffic in real-time. It combines rule-based detection with machine learning classification to identify threats such as DoS attacks, port scans, brute force attempts, SQL injection, and XSS attacks.
+
+### Key Capabilities
+
+- **Real-time Traffic Capture** - Monitor network packets using tshark/pyshark
+- **ML-Based Classification** - Detect threats using Random Forest trained on CICIDS2017 dataset
+- **AI-Powered Analysis** - Get contextual threat explanations with recommended actions
+- **Multi-Channel Alerts** - Email, SMS (Twilio), and Slack notifications
+- **Interactive Dashboard** - Web-based real-time monitoring and visualization
+
+---
 
 ## Features
 
-- **Live Traffic Capture**: Capture network packets using pyshark/tshark
-- **ML Classification**: Detect threats using XGBoost trained on CICIDS2017 dataset
-- **AI Explanations**: Get plain-English summaries of network traffic and threats
-- **Multi-Channel Alerts**: Email, SMS (Twilio), and Slack notifications
-- **Real-Time Dashboard**: Visual traffic stats, charts, and analysis
+| Feature | Description |
+|---------|-------------|
+| **Live Packet Capture** | Capture network traffic with BPF filtering, interface selection, and PCAP export |
+| **Attack Detection** | Detect DoS, Port Scan, Brute Force, SQL Injection, XSS, and Bot attacks |
+| **ML Classification** | Rule-based + ML model for accurate threat identification |
+| **AI Explanations** | Context-aware threat analysis with plain-English summaries |
+| **Real-time Dashboard** | Web interface with live charts, alerts, and packet monitoring |
+| **Alert Integration** | Email, SMS, and Slack notifications with rate limiting |
+
+---
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.8+
-- Wireshark/tshark installed and in PATH
-- (Optional) OpenAI API key for AI explanations
+- **Python 3.8+**
+- **Wireshark/tshark** - [Download](https://www.wireshark.org/download.html)
+- **OpenAI API Key** (optional, for AI explanations)
 
-### Setup
+### Quick Start
 
 ```bash
-# Clone or navigate to project
+# Clone the repository
+git clone https://github.com/Obulesu003/Netwatcher.git
 cd Netwatcher
 
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+# or: venv\Scripts\activate  # Windows
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Install Wireshark (if not already installed)
-# Download from https://www.wireshark.org/download.html
+# Start the dashboard
+python run.py
 ```
+
+Open http://localhost:5000 in your browser.
 
 ### Configuration
 
-Copy `config.example.yaml` to `config.yaml` and adjust settings:
+Copy `config.example.yaml` to `config.yaml` and customize:
 
 ```yaml
 capture:
-  interface: "auto"
-  filter: ""
+  interface: "auto"        # or specific interface name
+  filter: ""               # BPF filter (e.g., "tcp port 80")
   output_dir: "./data/captured"
 
 ml:
   model_path: "./models/traffic_classifier.pkl"
-  confidence_threshold: 0.8
+  confidence_threshold: 0.95
 
 ai:
   provider: "openai"
-  api_key: "your-api-key"  # Set via OPENAI_API_KEY env var
+  api_key: "${OPENAI_API_KEY}"  # Set via environment variable
   model: "gpt-3.5-turbo"
 
 alerts:
   email:
-    enabled: true
+    enabled: false
     smtp_host: "smtp.gmail.com"
     smtp_port: 587
     username: "your-email@gmail.com"
@@ -70,53 +104,80 @@ dashboard:
   refresh_interval: 5
 ```
 
+---
+
 ## Usage
 
-### Train the ML Model
+### Start Capture & Analysis
 
 ```bash
-python train_model.py
-```
-
-This trains a classifier on the CICIDS2017 dataset. If no dataset is available, a sample model with synthetic data will be created.
-
-### Run the Dashboard
-
-```bash
+# Run dashboard
 python run.py
 ```
 
-Then open http://localhost:5000 in your browser.
-
-### CLI Mode
+### CLI Commands
 
 ```bash
-# Capture with live analysis
+# Capture packets from interface
 python -m src.capture.packet_capture --interface eth0 --duration 60
 
-# Classify a PCAP file
+# Analyze PCAP file
 python -m src.capture.packet_capture --file capture.pcap --analyze
 
-# Generate a report
-python export_report.py --input data/captured/session.pcap --output report.pdf
+# Generate test PCAP files
+python scripts/generate_pcaps_fast.py
 ```
 
-## Architecture
+### Dashboard Features
+
+1. **Dashboard Tab** - Overview with stats, charts, and recent activity
+2. **Packet Monitor** - Live packet table with classification and confidence
+3. **Analytics** - Protocol distribution, top IPs, threat trends
+4. **Alerts** - Alert history and management
+5. **Reports** - Export captured data as CSV or PDF
+
+---
+
+## Project Structure
 
 ```
 Netwatcher/
 ├── src/
-│   ├── capture/        # Packet capture and processing
-│   ├── ml/             # ML training and classification
-│   ├── ai/             # AI explanation engine
-│   ├── alerts/         # Alert channels (email, SMS, Slack)
-│   ├── dashboard/       # Flask web interface
-│   └── utils/          # Configuration and utilities
-├── models/             # Trained ML models
-├── data/               # Captured data and exports
-├── train_model.py      # Model training script
-└── run.py              # Application entry point
+│   ├── ai/                  # AI explanation engine
+│   ├── alerts/              # Alert channels (email, SMS, Slack)
+│   ├── capture/             # Packet capture and processing
+│   ├── dashboard/          # Flask web interface
+│   ├── ml/                  # ML training and classification
+│   └── utils/              # Configuration and utilities
+├── scripts/                 # Utility scripts
+│   ├── train_model.py       # Train ML model
+│   ├── generate_pcaps_fast.py
+│   └── export_report.py
+├── data/
+│   ├── test_pcaps/          # Test PCAP files
+│   └── cicids2017/          # Training dataset (optional)
+├── models/                  # Trained ML models
+├── README.md
+├── SPEC.md
+└── requirements.txt
 ```
+
+---
+
+## Attack Detection
+
+Netwatcher detects the following attack types:
+
+| Attack | Detection Method | Threshold |
+|--------|------------------|-----------|
+| **DoS** | High-volume UDP traffic | 30+ packets, 200+ pps |
+| **Port Scan** | Multiple ports from single source | 15+ ports, rapid enumeration |
+| **Brute Force** | Rapid connection attempts (SSH) | 10+ attempts in 60s |
+| **SQL Injection** | Suspicious patterns in HTTP payloads | 20+ detections |
+| **XSS** | Script injection patterns | 20+ detections |
+| **Bot** | Regular interval beacon traffic | 3+ beacon intervals |
+
+---
 
 ## API Reference
 
@@ -127,10 +188,9 @@ Netwatcher/
 | `/api/status` | GET | System status and statistics |
 | `/api/capture/start` | POST | Start packet capture |
 | `/api/capture/stop` | POST | Stop packet capture |
-| `/api/capture/status` | GET | Capture status |
 | `/api/traffic/stats` | GET | Traffic statistics |
 | `/api/alerts` | GET | Recent alerts |
-| `/api/config` | GET/PUT | Configuration |
+| `/api/traffic/packets` | GET | Recent packets |
 
 ### WebSocket Events
 
@@ -138,64 +198,35 @@ Netwatcher/
 - `alert` - New alert notification
 - `classification` - ML classification result
 
-## Alert Configuration
+---
 
-### Email Alerts
+## Documentation
 
-Configure SMTP settings in `config.yaml`:
+- [SPEC.md](SPEC.md) - Detailed specification document
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- [LICENSE](LICENSE) - MIT License
 
-```yaml
-alerts:
-  email:
-    enabled: true
-    smtp_host: "smtp.gmail.com"
-    smtp_port: 587
-    username: "your-email@gmail.com"
-    password: "your-app-password"
-    recipients: ["admin@example.com"]
-```
+---
 
-### SMS Alerts (Twilio)
+## Tech Stack
 
-```yaml
-alerts:
-  sms:
-    enabled: true
-    twilio_sid: "your-account-sid"
-    twilio_token: "your-auth-token"
-    from_number: "+1234567890"
-    to_numbers: ["+0987654321"]
-```
+| Component | Technology |
+|-----------|------------|
+| Capture | pyshark, tshark/Wireshark |
+| ML | scikit-learn, Random Forest |
+| Dashboard | Flask, Chart.js, Bootstrap 5 |
+| Alerts | smtplib, Twilio, Slack webhooks |
+| AI | OpenAI API (optional) |
 
-### Slack Alerts
-
-```yaml
-alerts:
-  slack:
-    enabled: true
-    webhook_url: "https://hooks.slack.com/services/..."
-```
-
-## Development
-
-### Run Tests
-
-```bash
-pytest tests/
-```
-
-### Code Quality
-
-```bash
-flake8 src/
-mypy src/
-```
+---
 
 ## License
 
-MIT License
+MIT License - See [LICENSE](LICENSE) for details.
+
+---
 
 ## Acknowledgments
 
-- CICIDS2017 dataset from Canadian Institute for Cybersecurity
-- Built with pyshark, XGBoost, Flask, and OpenAI
+- [CICIDS2017 Dataset](https://www.unb.ca/cic/datasets/ids2017.html) - Canadian Institute for Cybersecurity
+- Built with Python, Flask, scikit-learn, and modern web technologies
